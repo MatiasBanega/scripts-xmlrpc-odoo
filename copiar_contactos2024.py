@@ -43,37 +43,29 @@ campos = [
     "l10n_ar_afip_responsibility_type_id",
     "id_sistema_la_red",
     "vendedor",
-    "fechaultimacompra"
+    "fechaultimacompra",
 ]
-condi1_o = [('id', '>', '1')]
+condi1_o = [("id", ">", "1")]
 
 gcontext = ssl._create_unverified_context()
 
 #########? ORIGEN
-sock_common_o = xmlrpc.client.ServerProxy(
-    web_o + 'xmlrpc/common' , context=gcontext
-)
+sock_common_o = xmlrpc.client.ServerProxy(web_o + "xmlrpc/common", context=gcontext)
 uid_o = sock_common_o.login(dbname_o, user_o, pwd_o)
 #########?
 
 
 #########? DESTINO
 # Get the uid destino de los datos
-sock_common_d = xmlrpc.client.ServerProxy(
-    web_d + "xmlrpc/common", context=gcontext
-)
+sock_common_d = xmlrpc.client.ServerProxy(web_d + "xmlrpc/common", context=gcontext)
 uid_d = sock_common_d.login(dbname_d, user_d, pwd_d)
 #########?
 
 # reemplazar el valor de la ip o url del servidor de origen con su puerto
-sock_o = xmlrpc.client.ServerProxy(
-    web_o + "/xmlrpc/object", context=gcontext
-)
+sock_o = xmlrpc.client.ServerProxy(web_o + "/xmlrpc/object", context=gcontext)
 
 # reemplazar el valor de la ip o url del servidor de destino con su puerto
-sock_d = xmlrpc.client.ServerProxy(
-    web_d + "xmlrpc/object", context=gcontext
-)
+sock_d = xmlrpc.client.ServerProxy(web_d + "xmlrpc/object", context=gcontext)
 
 print("===========================================")
 print("Se van a importar los siguientes registros:")
@@ -86,7 +78,7 @@ print("Modelo migrado.: ", model_d)
 print("Campo id anter.: ", idant_o)
 print("===========================================")
 
-registro_ids_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, 'search', condi1_o)
+registro_ids_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "search", condi1_o)
 
 # Iniciar los contadores
 x = 0
@@ -103,12 +95,18 @@ for i in registro_ids_o:
     # obteniendo la ID original para buscar en el destino
     clave = registro_data_o[0]["id"]
     nombre_o = registro_data_o[0]["name"]
+    id_sistema_la_red_o = registro_data_o[0]["id_sistema_la_red"]
     # Busqueda por id_anterior en el destino para ver si existe y se actualiza o hay que crearlo.
     # si el ODOO DE DESTINO tiene mas campos requeridos puede fallar, pero se agregan en la variable campos.
     # conviene importar antes de seguir instalando muchos modulos.
     # BUSCAMOS EN EL DESTINO SI EXISTE un res.users con el valor de idant_o (tiene que existir ente valor en el modelo) igual a clave
     registro_id_d = sock_d.execute(
-        dbname_d, uid_d, pwd_d, model_d, "search", [(idant_o, "=", nombre_o)]
+        dbname_d,
+        uid_d,
+        pwd_d,
+        model_d,
+        "search",
+        [("id_sistema_la_red", "=", id_sistema_la_red_o)],
     )
     # vamos a usar el campo ref pero hay que usar en un futuro x_id_anterior de res.partner
     # si se econtro el registro se actualiza
@@ -122,98 +120,147 @@ for i in registro_ids_o:
         )
         # aca nombramos variables para luego llamarlas dentro de valores_update, en especial las que devuelven un diccionario.
         valores_update = {
-            "company_type": registro_data_o[0]['company_type'],
-            "name": registro_data_o[0]['name'],
-            "parent_id": registro_data_o[0]['parent_id'],
-            "street": registro_data_o[0]['street'],
-            "street2": registro_data_o[0]['street2'],
-            "city": registro_data_o[0]['city'],
-            "zip": registro_data_o[0]['zip'],
-            "zona": registro_data_o[0]['zona'],
-            "vat": registro_data_o[0]['vat'],
-            "id_sistema_la_red": registro_data_o[0]['id_sistema_la_red'],
-            "vendedor": registro_data_o[0]['vendedor'],
-            "fechaultimacompra": registro_data_o[0]['fechaultimacompra'],
-            "function": registro_data_o[0]['function'],
-            "phone": registro_data_o[0]['phone'],
-            "mobile": registro_data_o[0]['mobile'],
-            "email": registro_data_o[0]['email'],
-            "website": registro_data_o[0]['website'],
-            "lang": registro_data_o[0]['lang'],
+            "company_type": registro_data_o[0]["company_type"],
+            "name": registro_data_o[0]["name"],
+            "parent_id": registro_data_o[0]["parent_id"],
+            "street": registro_data_o[0]["street"],
+            "street2": registro_data_o[0]["street2"],
+            "city": registro_data_o[0]["city"],
+            "zip": registro_data_o[0]["zip"],
+            "zona": registro_data_o[0]["zona"],
+            "id_sistema_la_red": registro_data_o[0]["id_sistema_la_red"],
+            "vendedor": registro_data_o[0]["vendedor"],
+            "fechaultimacompra": registro_data_o[0]["fechaultimacompra"],
+            "function": registro_data_o[0]["function"],
+            "phone": registro_data_o[0]["phone"],
+            "mobile": registro_data_o[0]["mobile"],
+            "email": registro_data_o[0]["email"],
+            "website": registro_data_o[0]["website"],
+            "lang": registro_data_o[0]["lang"],
         }
-        if registro_data_o[0]['state_id']:
-            valores_update['state_id'] = registro_data_o[0]['state_id'][0]
-        
-        if registro_data_o[0]['country_id']:
-            valores_update['country_id'] = registro_data_o[0]['country_id'][0]
-        if registro_data_o[0]['l10n_latam_identification_type_id']:
-            valores_update['l10n_latam_identification_type_id'] = registro_data_o[0]['l10n_latam_identification_type_id'][0]
-        if registro_data_o[0]['l10n_ar_afip_responsibility_type_id']:
-            valores_update['l10n_ar_afip_responsibility_type_id'] = registro_data_o[0]['l10n_ar_afip_responsibility_type_id'][0]
-        # if registro_data_o[0]['category_id']:
-        #     valores_update['category_id'] = registro_data_o[0]['category_id'][0]
-        # if registro_data_o[0]['title']:
-        #     valores_update = registro_data_o[0]['title'][0],
-
+        if registro_data_o[0]["state_id"]:
+            valores_update["state_id"] = registro_data_o[0]["state_id"][0]
+        if registro_data_o[0]["country_id"]:
+            valores_update["country_id"] = registro_data_o[0]["country_id"][0]
+        if registro_data_o[0]["l10n_latam_identification_type_id"]:
+            valores_update["l10n_latam_identification_type_id"] = registro_data_o[0][
+                "l10n_latam_identification_type_id"
+            ][0]
+        if registro_data_o[0]["l10n_ar_afip_responsibility_type_id"]:
+            valores_update["l10n_ar_afip_responsibility_type_id"] = registro_data_o[0][
+                "l10n_ar_afip_responsibility_type_id"
+            ][0]
 
         # esta linea es la encargada de actualizar en el destino
+        if registro_data_o[0]["vat"]:
+            if (
+                registro_data_o[0]["vat"].__len__() < 8
+                and registro_data_o[0]["l10n_latam_identification_type_id"][1] == "DNI"
+            ):
+                valores_update["vat"] = registro_data_o[0]["vat"].ljust(8, "0")
+            elif (
+                registro_data_o[0]["vat"].__len__() == 11
+                and registro_data_o[0]["l10n_latam_identification_type_id"][1] == "CUIT"
+            ):
+                valores_update["vat"] = registro_data_o[0]["vat"]
+            elif (
+                registro_data_o[0]["vat"].__len__() == 8
+                and registro_data_o[0]["l10n_latam_identification_type_id"][1] == "DNI"
+            ):
+                valores_update["vat"] = registro_data_o[0]["vat"]
+        elif registro_data_o[0]["vat"] is False:
+            valores_update["vat"] = ""
+
         try:
             return_id = sock_d.execute(
                 dbname_d, uid_d, pwd_d, model_d, "write", registro_id_d, valores_update
             )
-            print(return_id, "exito al actualizar user ", nombre_o)
+            print(
+                "\033[94m", return_id, "exito al actualizar user ", nombre_o, "\033[0m"
+            )
         except Exception as e:
-            print("Ha ocurrido un error al intentar actualizar el user: ", nombre_o)
-            print(e)
+            print("\033[91m================================================\033[0m")
+            print(
+                "\033[91mHa ocurrido un error al intentar crear el user: ",
+                nombre_o,
+                "\033[0m",
+            )
+            print("\033", e, "\033[0m")
+            print("\033[91m================================================\033[0m")
             ea += 1
         x += 1
     # si no se econtro el registro en el destino se crea
     else:
         print("No se encontro en el destino: ", nombre_o, " vamos a crearlo.")
         valores_update = {
-            "id": registro_data_o[0]['id'],
-            "company_type": registro_data_o[0]['company_type'],
-            "name": registro_data_o[0]['name'],
-            "parent_id": registro_data_o[0]['parent_id'],
-            "street": registro_data_o[0]['street'],
-            "street2": registro_data_o[0]['street2'],
-            "city": registro_data_o[0]['city'],
-            "zip": registro_data_o[0]['zip'],
-            "zona": registro_data_o[0]['zona'],
-            "vat": registro_data_o[0]['vat'],
-            "id_sistema_la_red": registro_data_o[0]['id_sistema_la_red'],
-            "vendedor": registro_data_o[0]['vendedor'],
-            "fechaultimacompra": registro_data_o[0]['fechaultimacompra'],
-            "function": registro_data_o[0]['function'],
-            "phone": registro_data_o[0]['phone'],
-            "mobile": registro_data_o[0]['mobile'],
-            "email": registro_data_o[0]['email'],
-            "website": registro_data_o[0]['website'],
-            "lang": registro_data_o[0]['lang'],
+            "id": registro_data_o[0]["id"],
+            "company_type": registro_data_o[0]["company_type"],
+            "name": registro_data_o[0]["name"],
+            "parent_id": registro_data_o[0]["parent_id"],
+            "street": registro_data_o[0]["street"],
+            "street2": registro_data_o[0]["street2"],
+            "city": registro_data_o[0]["city"],
+            "zip": registro_data_o[0]["zip"],
+            "zona": registro_data_o[0]["zona"],
+            "id_sistema_la_red": registro_data_o[0]["id_sistema_la_red"],
+            "vendedor": registro_data_o[0]["vendedor"],
+            "fechaultimacompra": registro_data_o[0]["fechaultimacompra"],
+            "function": registro_data_o[0]["function"],
+            "phone": registro_data_o[0]["phone"],
+            "mobile": registro_data_o[0]["mobile"],
+            "email": registro_data_o[0]["email"],
+            "website": registro_data_o[0]["website"],
+            "lang": registro_data_o[0]["lang"],
         }
-        if registro_data_o[0]['state_id']:
-            valores_update['state_id'] = registro_data_o[0]['state_id'][0]
-        
-        if registro_data_o[0]['country_id']:
-            valores_update['country_id'] = registro_data_o[0]['country_id'][0]
-        if registro_data_o[0]['l10n_latam_identification_type_id']:
-            valores_update['l10n_latam_identification_type_id'] = registro_data_o[0]['l10n_latam_identification_type_id'][0]
-        if registro_data_o[0]['l10n_ar_afip_responsibility_type_id']:
-            valores_update['l10n_ar_afip_responsibility_type_id'] = registro_data_o[0]['l10n_ar_afip_responsibility_type_id'][0]
+        if registro_data_o[0]["state_id"]:
+            valores_update["state_id"] = registro_data_o[0]["state_id"][0]
+        if registro_data_o[0]["country_id"]:
+            valores_update["country_id"] = registro_data_o[0]["country_id"][0]
+        if registro_data_o[0]["l10n_latam_identification_type_id"]:
+            valores_update["l10n_latam_identification_type_id"] = registro_data_o[0][
+                "l10n_latam_identification_type_id"
+            ][0]
+        if registro_data_o[0]["l10n_ar_afip_responsibility_type_id"]:
+            valores_update["l10n_ar_afip_responsibility_type_id"] = registro_data_o[0][
+                "l10n_ar_afip_responsibility_type_id"
+            ][0]
         # if registro_data_o[0]['category_id']:
         #     valores_update['category_id'] = registro_data_o[0]['category_id'][0]
         # if registro_data_o[0]['title']:
         #     valores_update = registro_data_o[0]['title'][1]
+        if registro_data_o[0]["vat"]:
+            if (
+                registro_data_o[0]["vat"].__len__() < 8
+                and registro_data_o[0]["l10n_latam_identification_type_id"][1] == "DNI"
+            ):
+                valores_update["vat"] = registro_data_o[0]["vat"].ljust(8, "0")
+            elif (
+                registro_data_o[0]["vat"].__len__() == 11
+                and registro_data_o[0]["l10n_latam_identification_type_id"][1] == "CUIT"
+            ):
+                valores_update["vat"] = registro_data_o[0]["vat"]
+            elif (
+                registro_data_o[0]["vat"].__len__() == 8
+                and registro_data_o[0]["l10n_latam_identification_type_id"][1] == "DNI"
+            ):
+                valores_update["vat"] = registro_data_o[0]["vat"]
+        elif registro_data_o[0]["vat"] is False:
+            valores_update["vat"] = ""
 
         try:
             return_id = sock_d.execute(
                 dbname_d, uid_d, pwd_d, model_d, "create", valores_update
             )
-            print(return_id, "exito al crear ", nombre_o)
+            print("\033[92m", return_id, "EXITO AL CREAR", nombre_o, "\033[0m")
         except Exception as e:
-            print("================================================")
-            print("Ha ocurrido un error al intentar crear el user: ", nombre_o)
-            print(e)
+            print("\033[91m================================================\033[0m")
+            print(
+                "\033[91mHa ocurrido un error al intentar crear el user: ",
+                nombre_o,
+                "\033[0m",
+            )
+            print("\033", e, "\033[0m")
+            print("\033[91m================================================\033[0m")
             ec += 1
         # print (registro_data_d)
         j += 1

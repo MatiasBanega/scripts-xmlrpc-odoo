@@ -1,24 +1,22 @@
-import sys
 import xmlrpc.client
 import ssl
+import logging
 
 
-user_o = "Nelsonjr"  # el usuario de odoo origen
-pwd_o = "Nelsonjr"  # contrasenia de usuario odoo origen
+user_o = "Nelsonjr"
+pwd_o = "Nelsonjr"
+dbname_o = "lared.devman.com.ar"
+web_o = "https://lared.devman.com.ar/"
+model_o = "rma_seminuevos"
+idant_o = "name"
 
-user_d = "Nelsonjr"  # el usuario de odoo destino
-pwd_d = "Nelsonjr"  # contrasenia de usuario destino
 
-dbname_o = "lared.devman.com.ar"  # nombre de base de datos origen
-dbname_d = "lared-rma-test.devman.com.ar"  # nombre de base de datos destino
+user_d = "Nelsonjr"
+pwd_d = "Nelsonjr"
+dbname_d = "lared-rma-test.devman.com.ar"
+web_d = "https://lared-rma-test.devman.com.ar/"
+model_d = "rma_seminuevos"
 
-web_o = "https://lared.devman.com.ar/"  # ip o dir web del origen
-web_d = "https://lared-rma-test.devman.com.ar/"  # ip o dir web del destino
-# datos de los modelos y campos
-model_o = "rma_seminuevos"  # nombre del modelo de origen
-model_d = "rma_seminuevos"  # nombre del modelo del destino
-idant_o = "name"  # TO DO  generar el x_id_anterior nombre del campo a usar en el destino para almacenar id anterior, dejar vacio si no se usa. (tiene que ser un campo existente en el modelo model_d)
-# este campo hay que crearlo en el modelo
 campos = [
     "name",
     "productos_id",
@@ -60,16 +58,16 @@ sock_o = xmlrpc.client.ServerProxy(web_o + "/xmlrpc/object", context=gcontext)
 # reemplazar el valor de la ip o url del servidor de destino con su puerto
 sock_d = xmlrpc.client.ServerProxy(web_d + "xmlrpc/object", context=gcontext)
 
-print("===========================================")
-print("Se van a importar los siguientes registros:")
-print("Web de origen..: ", web_o)
-print("Modelo a migrar: ", model_o)
-print("-------------------------------------------")
-print("Se van a actualizar/crear los siguientes registros:")
-print("Web de destino.: ", web_d)
-print("Modelo migrado.: ", model_d)
-print("Campo id anter.: ", idant_o)
-print("===========================================")
+logging.info("===========================================")
+logging.info("Se van a importar los siguientes registros:")
+logging.info("Web de origen..: %s", web_o)
+logging.info("Modelo a migrar: %s", model_o)
+logging.info("-------------------------------------------")
+logging.info("Se van a actualizar/crear los siguientes registros:")
+logging.info("Web de destino.:  %s", web_d)
+logging.info("Modelo migrado.:  %s", model_d)
+logging.info("Campo id anter.:  %s", idant_o)
+logging.info("===========================================")
 
 registro_ids_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "search", condi1_o)
 
@@ -81,10 +79,10 @@ ea = 0
 
 for i in registro_ids_o:
     # Leemos la info de los registros en la base origen
-    print(" cada registro de origen lo llamamos i, contiene lo siguiente: ", i)
-    print("Verificando en el origen el modelo: ", model_o, " el objeto con id: ", i)
+ logging.info("cada registro de origen lo llamamos i, contiene lo siguiente: %s", i)
+    logging.info("Verificando en el origen el modelo:  %s,  el objeto con id:  %s", model_o, i)
     registro_data_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "read", i, campos)
-    print("Registro  Obtenido: ", registro_data_o)
+    logging.info("Registro  Obtenido: %s", registro_data_o)
     # obteniendo la ID original para buscar en el destino
     clave = registro_data_o[0]["id"]
     nombre_o = registro_data_o[0]["name"]
@@ -119,7 +117,6 @@ for i in registro_ids_o:
         "marca": registro_data_o[0]["marca"],
         "plu": registro_data_o[0]["plu"],
         "fecha_mod_estado": registro_data_o[0]["fecha_mod_estado"],
-        "proveedor": registro_data_o[0]["proveedor"],
         "orden_service": registro_data_o[0]["orden_service"],
         "fecha_ingreso": registro_data_o[0]["fecha_ingreso"],
         "fecha_retiro": registro_data_o[0]["fecha_retiro"],
@@ -127,47 +124,52 @@ for i in registro_ids_o:
         "costo": registro_data_o[0]["costo"],
         "estado_service": registro_data_o[0]["estado_service"],
     }
+    if registro_data_o[0]["proveedor"]:
+        valores_update["proveedor"] = registro_data_o[0]["proveedor"][0]
     if product_id_destino:
         valores_update["productos_id"] = product_id_destino[0]
+    if registro_data_o[0]["stock_lot"]:
+        if registro_data_o[0]["stock_lot"].__len__() >= 1:
+            valores_update["stock_lot"] = registro_data_o[0]["stock_lot"][0]
+    if registro_data_o[0]["create_uid"]:
+        valores_update["create_uid"] = registro_data_o[0]["create_uid"][0]
 
     if registro_id_d:
-        print(
-            "Encontrado en el nuevo servidor",
-            clave,
-            "con nombre",
-            nombre_o,
-            "lo vamos a actualizar",
-        )
+        logging.info("Encontrado en el nuevo servidor %s con nombre %s lo vamos a actualizar", clave, nombre_o)
         # aca nombramos variables para luego llamarlas dentro de valores_update, en especial las que devuelven un diccionario.
 
         try:
             return_id = sock_d.execute(
                 dbname_d, uid_d, pwd_d, model_d, "write", registro_id_d, valores_update
             )
-            print(return_id, "exito al actualizar user ", nombre_o)
+             logging.warning("%s, EXITO AL ACTUALIZAR %s", return_id, nombre_o)
         except Exception as e:
-            print("Ha ocurrido un error al intentar actualizar el user: ", nombre_o)
-            print(e)
+            logging.error("================================================")
+            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
+            logging.error(e)
+            logging.error("================================================")
             ea += 1
         x += 1
     # si no se econtro el registro en el destino se crea
     else:
-        print("No se encontro en el destino: ", nombre_o, " vamos a crearlo.")
+        logging.info("No se encontro en el destino:  %s vamos a crearlo.", nombre_o)
 
         try:
             return_id = sock_d.execute(
                 dbname_d, uid_d, pwd_d, model_d, "create", valores_update
             )
-            print(return_id, "========= exito al crear =========", nombre_o)
+            print("\033[92m", return_id, "EXITO AL CREAR", nombre_o, "\033[0m")
         except Exception as e:
-            print("================================================")
-            print("Ha ocurrido un error al intentar crear el user: ", nombre_o)
-            print(e)
-            print("================================================")
+            logging.warning("%s, EXITO AL CREAR %s", return_id, nombre_o)
+        except Exception as e:
+            logging.error("================================================")
+            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
+            logging.error(e)
+            logging.error("================================================")
             ec += 1
         # print (registro_data_d)
         j += 1
-print("Cantidad de registros actualizados: ", x)
-print("Cantidad de actualizados con error: ", ea)
-print("Cantidad de registros creados: ", j)
-print(" Cantidad de errores al crear: ", ec)
+logging.info("Cantidad de registros actualizados: %s", x)
+logging.info("Cantidad de actualizados con error: %s", ea)
+logging.info("Cantidad de registros creados: %s", j)
+logging.info(" Cantidad de errores al crear: %s", ec)

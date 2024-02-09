@@ -1,24 +1,29 @@
-import sys
 import xmlrpc.client
 import ssl
+import logging
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    filename='copiar_productos.log',
+                    filemode='w')
 
 
-user_o = "Nelsonjr"  # el usuario de odoo origen
-pwd_o = "Nelsonjr"  # contrasenia de usuario odoo origen
+user_o = "Nelsonjr"
+pwd_o = "Nelsonjr"
 
-user_d = "Nelsonjr"  # el usuario de odoo destino
-pwd_d = "Nelsonjr"  # contrasenia de usuario destino
+user_d = "Nelsonjr"
+pwd_d = "Nelsonjr"
 
-dbname_o = "lared.devman.com.ar"  # nombre de base de datos origen
-dbname_d = "lared-rma-test.devman.com.ar"  # nombre de base de datos destino
+dbname_o = "lared.devman.com.ar"
+dbname_d = "lared-rma-test.devman.com.ar"
 
-web_o = "https://lared.devman.com.ar/"  # ip o dir web del origen
-web_d = "https://lared-rma-test.devman.com.ar/"  # ip o dir web del destino
-# datos de los modelos y campos
-model_o = "product.template"  # nombre del modelo de origen
-model_d = "product.template"  # nombre del modelo del destino
-idant_o = "name"  # TO DO  generar el x_id_anterior nombre del campo a usar en el destino para almacenar id anterior, dejar vacio si no se usa. (tiene que ser un campo existente en el modelo model_d)
-# este campo hay que crearlo en el modelo
+web_o = "https://lared.devman.com.ar/"
+web_d = "https://lared-rma-test.devman.com.ar/"
+
+model_o = "product.template"
+model_d = "product.template"
+idant_o = "name"
+
 campos = [
     "name",
     "sale_ok",
@@ -68,7 +73,7 @@ campos = [
     "puntominimo4",
     "puntominimo5",
     "puntominimo6",
-    "tracking"
+    "tracking",
 ]
 condi1_o = [("list_price", ">", "0")]
 
@@ -92,16 +97,16 @@ sock_o = xmlrpc.client.ServerProxy(web_o + "/xmlrpc/object", context=gcontext)
 # reemplazar el valor de la ip o url del servidor de destino con su puerto
 sock_d = xmlrpc.client.ServerProxy(web_d + "xmlrpc/object", context=gcontext)
 
-print("===========================================")
-print("Se van a importar los siguientes registros:")
-print("Web de origen..: ", web_o)
-print("Modelo a migrar: ", model_o)
-print("-------------------------------------------")
-print("Se van a actualizar/crear los siguientes registros:")
-print("Web de destino.: ", web_d)
-print("Modelo migrado.: ", model_d)
-print("Campo id anter.: ", idant_o)
-print("===========================================")
+logging.info("===========================================")
+logging.info("Se van a importar los siguientes registros:")
+logging.info("Web de origen..: %s", web_o)
+logging.info("Modelo a migrar: %s", model_o)
+logging.info("-------------------------------------------")
+logging.info("Se van a actualizar/crear los siguientes registros:")
+logging.info("Web de destino.:  %s", web_d)
+logging.info("Modelo migrado.:  %s", model_d)
+logging.info("Campo id anter.:  %s", idant_o)
+logging.info("===========================================")
 
 registro_ids_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "search", condi1_o)
 
@@ -112,11 +117,13 @@ ec = 0
 ea = 0
 
 for i in registro_ids_o:
+    # if j == 100:
+    #     break
     # Leemos la info de los registros en la base origen
-    print(" cada registro de origen lo llamamos i, contiene lo siguiente: ", i)
-    print("Verificando en el origen el modelo: ", model_o, " el objeto con id: ", i)
+    logging.info("cada registro de origen lo llamamos i, contiene lo siguiente: %s", i)
+    logging.info("Verificando en el origen el modelo:  %s,  el objeto con id:  %s", model_o, i)
     registro_data_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "read", i, campos)
-    print("Registro  Obtenido: ", registro_data_o)
+    logging.info("Registro  Obtenido: %s", registro_data_o)
     # obteniendo la ID original para buscar en el destino
     clave = registro_data_o[0]["id"]
     nombre_o = registro_data_o[0]["name"]
@@ -125,25 +132,23 @@ for i in registro_ids_o:
     # conviene importar antes de seguir instalando muchos modulos.
     # BUSCAMOS EN EL DESTINO SI EXISTE un res.users con el valor de idant_o (tiene que existir ente valor en el modelo) igual a clave
     registro_id_d = sock_d.execute(
-        dbname_d, uid_d, pwd_d, model_d, "search", [(idant_o, "=", nombre_o)]
+        dbname_d,
+        uid_d,
+        pwd_d,
+        model_d,
+        "search",
+        [("plu", "=", registro_data_o[0]["plu"])],
     )
     # vamos a usar el campo ref pero hay que usar en un futuro x_id_anterior de res.partner
     # si se econtro el registro se actualiza
     if registro_id_d:
-        print(
-            "Encontrado en el nuevo servidor",
-            clave,
-            "con nombre",
-            nombre_o,
-            "lo vamos a actualizar",
-        )
-        # aca nombramos variables para luego llamarlas dentro de valores_update, en especial las que devuelven un diccionario.
+        logging.info("Encontrado en el nuevo servidor %s con nombre %s lo vamos a actualizar", clave, nombre_o)
+        
         valores_update = {
             "id": registro_data_o[0]["id"],
             "name": registro_data_o[0]["name"],
             "sale_ok": registro_data_o[0]["sale_ok"],
             "detailed_type": registro_data_o[0]["detailed_type"],
-            "invoice_policy": registro_data_o[0]["invoice_policy"],
             "list_price": registro_data_o[0]["list_price"],
             "standard_price": registro_data_o[0]["standard_price"],
             "default_code": registro_data_o[0]["default_code"],
@@ -185,33 +190,35 @@ for i in registro_ids_o:
             "puntominimo4": registro_data_o[0]["puntominimo4"],
             "puntominimo5": registro_data_o[0]["puntominimo5"],
             "puntominimo6": registro_data_o[0]["puntominimo6"],
-            "tracking": registro_data_o[0]["tracking"]
+            "tracking": registro_data_o[0]["tracking"],
         }
 
         if registro_data_o[0]["categ_id"]:
-          valores_update["categ_id"] = registro_data_o[0]["categ_id"][0]
+            valores_update["categ_id"] = registro_data_o[0]["categ_id"][0]
         # if registro_data_o[0]["taxes_id"]:
         #   valores_update["taxes_id"] = registro_data_o[0]["taxes_id"][0]
-
+        if registro_data_o[0]["invoice_policy"] == 1:
+            valores_update["invoice_policy"] = ""
         try:
             return_id = sock_d.execute(
                 dbname_d, uid_d, pwd_d, model_d, "write", registro_id_d, valores_update
             )
-            print(return_id, "exito al actualizar user ", nombre_o)
+            logging.warning("%s, EXITO AL CREAR %s", return_id, nombre_o)
         except Exception as e:
-            print("Ha ocurrido un error al intentar actualizar el user: ", nombre_o)
-            print(e)
+            logging.error("================================================")
+            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
+            logging.error(e)
+            logging.error("================================================")
             ea += 1
         x += 1
     # si no se econtro el registro en el destino se crea
     else:
-        print("No se encontro en el destino: ", nombre_o, " vamos a crearlo.")
+        logging.info("No se encontro en el destino:  %s vamos a crearlo.", nombre_o)
         valores_update = {
             "id": registro_data_o[0]["id"],
             "name": registro_data_o[0]["name"],
             "sale_ok": registro_data_o[0]["sale_ok"],
             "detailed_type": registro_data_o[0]["detailed_type"],
-            "invoice_policy": registro_data_o[0]["invoice_policy"],
             "list_price": registro_data_o[0]["list_price"],
             "standard_price": registro_data_o[0]["standard_price"],
             "default_code": registro_data_o[0]["default_code"],
@@ -253,11 +260,14 @@ for i in registro_ids_o:
             "puntominimo4": registro_data_o[0]["puntominimo4"],
             "puntominimo5": registro_data_o[0]["puntominimo5"],
             "puntominimo6": registro_data_o[0]["puntominimo6"],
-            "tracking": registro_data_o[0]["tracking"]
+            "tracking": registro_data_o[0]["tracking"],
         }
 
         if registro_data_o[0]["categ_id"]:
-          valores_update["categ_id"] = registro_data_o[0]["categ_id"][0]
+            valores_update["categ_id"] = registro_data_o[0]["categ_id"][0]
+
+        if registro_data_o[0]["invoice_policy"] == 1:
+            valores_update["invoice_policy"] = ""
         # if registro_data_o[0]["taxes_id"]:
         #   valores_update["taxes_id"] = registro_data_o[0]["taxes_id"][0]
 
@@ -265,15 +275,17 @@ for i in registro_ids_o:
             return_id = sock_d.execute(
                 dbname_d, uid_d, pwd_d, model_d, "create", valores_update
             )
-            print(return_id, "exito al crear ", nombre_o)
+            logging.warning("%s, EXITO AL CREAR %s", return_id, nombre_o)
         except Exception as e:
-            print("================================================")
-            print("Ha ocurrido un error al intentar crear el user: ", nombre_o)
-            print(e)
+            logging.error("================================================")
+            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
+            logging.error(e)
+            logging.error("================================================")
+
             ec += 1
         # print (registro_data_d)
         j += 1
-print("Cantidad de registros actualizados: ", x)
-print("Cantidad de actualizados con error: ", ea)
-print("Cantidad de registros creados: ", j)
-print(" Cantidad de errores al crear: ", ec)
+logging.info("Cantidad de registros actualizados: %s", x)
+logging.info("Cantidad de actualizados con error: %s", ea)
+logging.info("Cantidad de registros creados: %s", j)
+logging.info(" Cantidad de errores al crear: %s", ec)
