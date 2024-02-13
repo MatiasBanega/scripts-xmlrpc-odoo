@@ -2,10 +2,12 @@ import xmlrpc.client
 import ssl
 import logging
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    filename='copiar_productos.log',
-                    filemode='w')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    filename="copiar_productos.log",
+    filemode="w",
+)
 
 
 user_o = "Nelsonjr"
@@ -121,7 +123,9 @@ for i in registro_ids_o:
     #     break
     # Leemos la info de los registros en la base origen
     logging.info("cada registro de origen lo llamamos i, contiene lo siguiente: %s", i)
-    logging.info("Verificando en el origen el modelo:  %s,  el objeto con id:  %s", model_o, i)
+    logging.info(
+        "Verificando en el origen el modelo:  %s,  el objeto con id:  %s", model_o, i
+    )
     registro_data_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "read", i, campos)
     logging.info("Registro  Obtenido: %s", registro_data_o)
     # obteniendo la ID original para buscar en el destino
@@ -142,8 +146,12 @@ for i in registro_ids_o:
     # vamos a usar el campo ref pero hay que usar en un futuro x_id_anterior de res.partner
     # si se econtro el registro se actualiza
     if registro_id_d:
-        logging.info("Encontrado en el nuevo servidor %s con nombre %s lo vamos a actualizar", clave, nombre_o)
-        
+        logging.info(
+            "Encontrado en el nuevo servidor %s con nombre %s lo vamos a actualizar",
+            clave,
+            nombre_o,
+        )
+
         valores_update = {
             "id": registro_data_o[0]["id"],
             "name": registro_data_o[0]["name"],
@@ -206,7 +214,9 @@ for i in registro_ids_o:
             logging.warning("%s, EXITO AL CREAR %s", return_id, nombre_o)
         except Exception as e:
             logging.error("================================================")
-            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
+            logging.error(
+                "Ha ocurrido un error al intentar crear el user: %s", nombre_o
+            )
             logging.error(e)
             logging.error("================================================")
             ea += 1
@@ -278,7 +288,9 @@ for i in registro_ids_o:
             logging.warning("%s, EXITO AL CREAR %s", return_id, nombre_o)
         except Exception as e:
             logging.error("================================================")
-            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
+            logging.error(
+                "Ha ocurrido un error al intentar crear el user: %s", nombre_o
+            )
             logging.error(e)
             logging.error("================================================")
 

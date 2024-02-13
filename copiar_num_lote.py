@@ -2,10 +2,12 @@ import xmlrpc.client
 import ssl
 import logging
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    filename='copiar_productos_product.log',
-                    filemode='w')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    filename="copiar_num_lote.log",
+    filemode="w",
+)
 
 user_o = "Nelsonjr"  # el usuario de odoo origen
 pwd_o = "Nelsonjr"  # contrasenia de usuario odoo origen
@@ -63,79 +65,73 @@ logging.info("Modelo migrado.:  %s", model_d)
 logging.info("Campo id anter.:  %s", idant_o)
 logging.info("===========================================")
 
+#! Busca todos los registros que hay en el modelo de origen, segun la condicion que le hemos pasado
 registro_ids_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "search", condi1_o)
 
 # Iniciar los contadores
-x = 0
-j = 0
-ec = 0
-ea = 0
+x, j, ec, ea = 0, 0, 0, 0
 
 for i in registro_ids_o:
-    # Leemos la info de los registros en la base origen
-    logging.info("cada registro de origen lo llamamos i, contiene lo siguiente: %s", i)
-    logging.info("Verificando en el origen el modelo:  %s,  el objeto con id:  %s", model_o, i)
+    #! Obtiene registros
     registro_data_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "read", i, campos)
-    logging.info("Registro  Obtenido: %s", registro_data_o)
-    # obteniendo la ID original para buscar en el destino
-    clave = registro_data_o[0]["id"]
-    nombre_o = registro_data_o[0]["name"]
-    # Busqueda por id_anterior en el destino para ver si existe y se actualiza o hay que crearlo.
-    # si el ODOO DE DESTINO tiene mas campos requeridos puede fallar, pero se agregan en la variable campos.
-    # conviene importar antes de seguir instalando muchos modulos.
-    # BUSCAMOS EN EL DESTINO SI EXISTE un res.users con el valor de idant_o (tiene que existir ente valor en el modelo) igual a clave
-    registro_id_d = sock_d.execute(
-        dbname_d, uid_d, pwd_d, model_d, "search", [(idant_o, "=", clave)]
+    logging.info("Obteniendo registros...")
+
+    #! Obtengo id y name del registro de la base de origen
+    clave, nombre_o, product_id_o = (
+        registro_data_o[0]["id"],
+        registro_data_o[0]["name"],
+        registro_data_o[0]["product_id"],
     )
 
-    product_id_destino = sock_d.execute(dbname_d, uid_d, pwd_d,  "product.template", "search",[("name", "=", registro_data_o[0]["product_id"][1])])
-    # vamos a usar el campo ref pero hay que usar en un futuro x_id_anterior de res.partner
-    # si se econtro el registro se actualiza
-    valores_update = {
+    logging.info("Registro Obtenido: %s", registro_data_o[0]["product_id"])
+    registro_id_d = sock_d.execute(
+        dbname_d, uid_d, pwd_d, model_d, "search", [("name", "=", nombre_o)], 0, 1
+    )
+    product_id_d = sock_d.execute(
+        dbname_d,
+        uid_d,
+        pwd_d,
+        "product.template",
+        "search",
+        [("name", "=", registro_data_o[0]["product_id"][1])],
+    )
+
+    # if registro_id_d:
+    #     pass
+    #     # logging.info("HAY REGISTRO... VAMOS A ACTUALIZAR")
+    #     # try:
+    #     #     return_id  = sock_d.execute(dbname_d, uid_d, pwd_d, model_d, "write", registro_id_d, valores_update)
+    #     #     logging.info("ACTUALIZADO CON EXITO: %s", registro_data_o[0]["product_id"])
+    #     # except Exception as e:
+    #     #     logging.error("================================================")
+    #     #     logging.error(e)
+    #     #     logging.error("================================================")
+    #     #     ea += 1
+    #     # x += 1
+    if not registro_id_d and product_id_d:
+        logging.info("NO HAY REGISTRO... VAMOS A CREARLO")
+        logging.info(product_id_d)
+        valores_update = {
             "name": registro_data_o[0]["name"],
             "ref": registro_data_o[0]["ref"],
             "product_qty": registro_data_o[0]["product_qty"],
             "warranty_exp_date": registro_data_o[0]["warranty_exp_date"],
+            "product_id": product_id_d[0],
             "company_id": 1
         }
-    if product_id_destino:
-      valores_update["product_id"] = product_id_destino[0]
-    if registro_id_d:
-        logging.info("Encontrado en el nuevo servidor %s con nombre %s lo vamos a actualizar", clave, nombre_o)
-
-        # aca nombramos variables para luego llamarlas dentro de valores_update, en especial las que devuelven un diccionario.
-
-        try:
-            return_id = sock_d.execute(
-                dbname_d, uid_d, pwd_d, model_d, "write", registro_id_d, valores_update
-            )
-            logging.warning("%s, EXITO AL ACTUALIZAR %s", return_id, nombre_o)
-        except Exception as e:
-            logging.error("================================================")
-            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
-            logging.error(e)
-            logging.error("================================================")
-            ea += 1
-        x += 1
-    # si no se econtro el registro en el destino se crea
-    else:
-        logging.info("No se encontro en el destino:  %s vamos a crearlo.", nombre_o)
-
         try:
             return_id = sock_d.execute(
                 dbname_d, uid_d, pwd_d, model_d, "create", valores_update
             )
-            logging.warning("%s, EXITO AL CREAR %s", return_id, nombre_o)
+            logging.info("CREADO")
         except Exception as e:
             logging.error("================================================")
-            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
             logging.error(e)
             logging.error("================================================")
             ec += 1
-        # print (registro_data_d)
         j += 1
+
 logging.info("Cantidad de registros actualizados: %s", x)
 logging.info("Cantidad de actualizados con error: %s", ea)
 logging.info("Cantidad de registros creados: %s", j)
 logging.info(" Cantidad de errores al crear: %s", ec)
-

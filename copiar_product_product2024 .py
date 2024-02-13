@@ -3,10 +3,12 @@ import xmlrpc.client
 import ssl
 import logging
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    filename='copiar_productos_product.log',
-                    filemode='w')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    filename="copiar_productos_product.log",
+    filemode="w",
+)
 
 
 user_o = "Nelsonjr"  # el usuario de odoo origen
@@ -109,7 +111,9 @@ logging.info("Modelo migrado.:  %s", model_d)
 logging.info("Campo id anter.:  %s", idant_o)
 logging.info("===========================================")
 
-registro_ids_o = sock_d.execute(dbname_d, uid_d, pwd_d, "product.template", "search", condi1_o)
+registro_ids_o = sock_o.execute(
+    dbname_o, uid_o, pwd_o, "product.template", "search", condi1_o
+)
 
 # Iniciar los contadores
 x = 0
@@ -121,13 +125,25 @@ for i in registro_ids_o:
     # if j == 100:
     #     break
     # Leemos la info de los registros en la base origen
-    logging.info("cada registro de origen lo llamamos i, contiene lo siguiente: %s", i)
-    logging.info("Verificando en el origen el modelo:  %s,  el objeto con id:  %s", model_o, i)
-    registro_data_o = sock_o.execute(dbname_o, uid_o, pwd_o, model_o, "read", i, campos)
-    logging.info("Registro  Obtenido: %s", registro_data_o)
+
+    registro_data_o = sock_o.execute(
+        dbname_o, uid_o, pwd_o, "product.template", "read", i, campos
+    )
     # obteniendo la ID original para buscar en el destino
-    clave = registro_data_o[0]["id"]
-    nombre_o = registro_data_o[0]["name"]
+    if registro_data_o:
+        logging.info(
+            "cada registro de origen lo llamamos i, contiene lo siguiente: %s", i
+        )
+        logging.info(
+            "Verificando en el origen el modelo:  %s,  el objeto con id:  %s",
+            model_o,
+            i,
+        )
+        logging.info("Registro  Obtenido: %s", registro_data_o)
+        clave = registro_data_o[0]["id"]
+        nombre_o = registro_data_o[0]["name"]
+    else:
+        continue
     # Busqueda por id_anterior en el destino para ver si existe y se actualiza o hay que crearlo.
     # si el ODOO DE DESTINO tiene mas campos requeridos puede fallar, pero se agregan en la variable campos.
     # conviene importar antes de seguir instalando muchos modulos.
@@ -136,12 +152,21 @@ for i in registro_ids_o:
     #     dbname_d, uid_d, pwd_d, model_d, "search", [("plu", "=", registro_data_o[0]["plu"])]
     # )
     product_tmpl_id = sock_d.execute(
-        dbname_d, uid_d, pwd_d, "product.template", "search", [("plu", "=", registro_data_o[0]["plu"])]
+        dbname_d,
+        uid_d,
+        pwd_d,
+        "product.template",
+        "search",
+        [("plu", "=", registro_data_o[0]["plu"])],
     )
     # vamos a usar el campo ref pero hay que usar en un futuro x_id_anterior de res.partner
     # si se econtro el registro se actualiza
     if product_tmpl_id:
-        logging.info("Encontrado en el nuevo servidor %s con nombre %s lo vamos a actualizar", clave, nombre_o)
+        logging.info(
+            "Encontrado en el nuevo servidor %s con nombre %s lo vamos a actualizar",
+            clave,
+            nombre_o,
+        )
 
         # aca nombramos variables para luego llamarlas dentro de valores_update, en especial las que devuelven un diccionario.
         valores_update = {
@@ -190,7 +215,7 @@ for i in registro_ids_o:
             "puntominimo4": registro_data_o[0]["puntominimo4"],
             "puntominimo5": registro_data_o[0]["puntominimo5"],
             "puntominimo6": registro_data_o[0]["puntominimo6"],
-            "tracking": registro_data_o[0]["tracking"]
+            "tracking": registro_data_o[0]["tracking"],
         }
 
         # if registro_data_o[0]["categ_id"]:
@@ -199,15 +224,25 @@ for i in registro_ids_o:
         # #   valores_update["taxes_id"] = registro_data_o[0]["taxes_id"][0]
         # if registro_data_o[0]["invoice_policy"] == 1:
         #     valores_update["invoice_policy"] = ''
-        # valores_update={"plu": registro_data_o[0]["plu"], "marca": registro_data_o[0]["marca"]}   
+        # valores_update={"plu": registro_data_o[0]["plu"], "marca": registro_data_o[0]["marca"]}
         try:
             return_id = sock_d.execute(
-                dbname_d, uid_d, pwd_d, model_d, "write", product_tmpl_id, valores_update
+                dbname_d,
+                uid_d,
+                pwd_d,
+                model_d,
+                "write",
+                product_tmpl_id,
+                valores_update,
             )
-            logging.warning("%s, EXITO AL ACTUALIZAR %s", return_id, nombre_o)
+            logging.info("================================================")
+            logging.info("%s, EXITO AL ACTUALIZAR %s", return_id, nombre_o)
+            logging.info("================================================")
         except Exception as e:
             logging.error("================================================")
-            logging.error("Ha ocurrido un error al intentar crear el user: %s", nombre_o)
+            logging.error(
+                "Ha ocurrido un error al intentar crear el user: %s", nombre_o
+            )
             logging.error(e)
             logging.error("================================================")
             ea += 1
@@ -266,7 +301,7 @@ for i in registro_ids_o:
 
     #     if registro_data_o[0]["categ_id"]:
     #       valores_update["categ_id"] = registro_data_o[0]["categ_id"][0]
-        
+
     #     if registro_data_o[0]["invoice_policy"] == 1:
     #         valores_update["invoice_policy"] = ''
     #     if product_tmpl_id:
